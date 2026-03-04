@@ -1,5 +1,5 @@
 
-import csv
+
 import argparse
 from simulation.network import build_network, network_summary, TOPOLOGY_SMALL_WORLD
 from simulation.information import InfoItem

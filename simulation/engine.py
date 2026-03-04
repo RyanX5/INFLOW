@@ -76,11 +76,29 @@ class SimulationEngine:
                     # Skip if neighbor already received this item
                     if item.item_id in neighbor.received_info:
                         continue
-                    # Uniform random share decision (Report 1 placeholder)
-                    if random.random() < self.share_probability:
+                    # Share decision based on agent personality and props
+                    p = self._sharing_probability(agent, neighbor, item)
+                    if random.random() < p:
                         neighbor.receive_information(item)
                         agent.shared_info.append(item.item_id)
                         item.spread_count += 1
+
+    def _sharing_probability(self, agent, neighbor, item):
+        """
+        Compute sharing probability based on agent personality and item properties.
+        
+        """
+        # Belief alignment: 1.0 = perfectly aligned, 0.0 = opposite
+        alignment = 1.0 - abs(agent.belief - item.truth_value)
+        
+        # Weighted combination
+        prob = (
+            0.4 * item.emotional_intensity +
+            0.3 * alignment +
+            0.3 * agent.trust_radius
+        )
+    
+        return max(0.0, min(1.0, prob))
 
     def _log_step(self):
         """
