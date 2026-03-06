@@ -25,13 +25,13 @@ class Agent:
         self.shared_info = []     # list of InfoItem ids shared onward
 
     def receive_information(self, info_item):
-        """
-        Log that this agent has received an information item.
-        Belief update logic will be added in Report 2.
-        
-        """
         if info_item.item_id not in self.received_info:
             self.received_info.append(info_item.item_id)
+            
+            # Belief update based on skepticism and bias
+            delta = (info_item.truth_value - self.belief) / (1 + self.skepticism)
+            delta *= (1 - self.bias)
+            self.belief = max(0.0, min(1.0, self.belief + delta))
 
     def to_dict(self) -> dict:
         """
