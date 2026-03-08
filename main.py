@@ -51,13 +51,25 @@ def main():
     random.seed(args.seed)
     origin = random.choice(list(agents.keys()))
 
-    info = InfoItem(
+    # True item - high truth, low emotion
+    true_info = InfoItem(
         item_id=0,
-        truth_value=0.2,
-        emotional_intensity=0.85,
+        truth_value=0.9,
+        emotional_intensity=0.2,
         complexity=0.5,
         origin_node=origin
     )
+
+    # False item - low truth, high emotion (misinformation)
+    false_info = InfoItem(
+        item_id=1,
+        truth_value=0.1,
+        emotional_intensity=0.9,
+        complexity=0.3,
+        origin_node=random.choice(list(agents.keys()))
+    )
+
+
 
    
     engine = SimulationEngine(
@@ -66,7 +78,8 @@ def main():
         seed=args.seed,
         share_probability=args.share_prob
     )
-    engine.inject_information(info)
+    engine.inject_information(true_info)
+    engine.inject_information(false_info)
     engine.run(num_steps=args.steps)
 
    
