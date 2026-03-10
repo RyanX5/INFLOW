@@ -102,15 +102,25 @@ class SimulationEngine:
 
     def _log_step(self):
         """
-        Record spread metrics for this step to the spread log.
+        Record spread metrics and belief distribution for this step.
         """
         for item in self.info_items:
+            # Get beliefs of all agents who have received this item
+            holders = [
+                agent for agent in self.agents.values()
+                if item.item_id in agent.received_info
+            ]
+            beliefs = [a.belief for a in holders] if holders else [0.0]
+            
             self.spread_log.append({
                 "step": self.step,
                 "item_id": item.item_id,
                 "spread_count": item.spread_count,
                 "total_agents": len(self.agents),
                 "spread_fraction": round(item.spread_count / len(self.agents), 4),
+                "avg_belief": round(sum(beliefs) / len(beliefs), 4),
+                "min_belief": round(min(beliefs), 4),
+                "max_belief": round(max(beliefs), 4),
             })
 
     def _print_step_summary(self):
