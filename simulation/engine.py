@@ -168,3 +168,22 @@ class SimulationEngine:
                 writer.writeheader()
                 writer.writerows(info_rows)
             print(f"Saved: {info_path}")
+        
+        # Save edge list
+        edges_path = os.path.join(output_dir, "edges.csv")
+        edge_rows = [{"source": u, "target": v} for u, v in self.graph.edges()]
+        if edge_rows:
+            with open(edges_path, "w", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=["source", "target"])
+                writer.writeheader()
+                writer.writerows(edge_rows)
+            print(f"Saved: {edges_path}")
+
+        viz_public = os.path.join("visualization", "public")
+        if os.path.exists(viz_public):
+            import shutil
+            for filename in ["spread_log.csv", "agent_states.csv", "info_items.csv", "edges.csv"]:
+                src = os.path.join(output_dir, filename)
+                if os.path.exists(src):
+                    shutil.copy(src, os.path.join(viz_public, filename))
+            print(f"Copied outputs to {viz_public}")

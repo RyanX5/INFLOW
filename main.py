@@ -1,9 +1,11 @@
 
 
 import argparse
+import os
 from simulation.network import build_network, network_summary, TOPOLOGY_SMALL_WORLD
 from simulation.information import InfoItem
 from simulation.engine import SimulationEngine
+from simulation.agent import Agent
 
 
 def parse_args():
@@ -19,6 +21,8 @@ def parse_args():
                         help="Network topology (default: small_world)")
     parser.add_argument("--seed", type=int, default=42,
                         help="Random seed for reproducibility (default: 42)")
+    parser.add_argument("--reset", action="store_true",
+                    help="Clear output directory before running")
     parser.add_argument("--share-prob", type=float, default=0.3,
                         help="Uniform sharing probability per step (default: 0.3)")
     parser.add_argument("--output-dir", type=str, default="output",
@@ -36,6 +40,12 @@ def main():
 
    
     print(f"\nBuilding '{args.topology}' network with {args.agents} agents...")
+    if args.reset:
+        import shutil
+        if os.path.exists(args.output_dir):
+            shutil.rmtree(args.output_dir)
+        print(f"Output directory '{args.output_dir}' cleared.\n")
+
     graph, agents = build_network(
         num_agents=args.agents,
         topology=args.topology,
@@ -49,7 +59,11 @@ def main():
     # Inject a single high-emotion, low-truth item from a random origin node
     import random
     random.seed(args.seed)
-    origin = random.choice(list(agents.keys()))
+    origin_true_id = random.choice(list(agents.keys()))
+    origin_false_id = random.choice(list(agents.keys()))
+
+    agents[origin_true_id].is_origin = True
+    agents[origin_false_id].is_origin = False
 
     # True item - high truth, low emotion
     true_info = InfoItem(
@@ -57,7 +71,7 @@ def main():
         truth_value=0.9,
         emotional_intensity=0.2,
         complexity=0.5,
-        origin_node=origin
+        origin_node=origin_true_id
     )
 
     # False item - low truth, high emotion (misinformation)
@@ -66,7 +80,7 @@ def main():
         truth_value=0.1,
         emotional_intensity=0.9,
         complexity=0.3,
-        origin_node=random.choice(list(agents.keys()))
+        origin_node=origin_false_id
     )
 
 

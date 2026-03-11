@@ -23,6 +23,7 @@ class Agent:
 
         self.received_info = []   # list of InfoItem ids received
         self.shared_info = []     # list of InfoItem ids shared onward
+        self.is_origin = None
 
     def receive_information(self, info_item):
         if info_item.item_id not in self.received_info:
@@ -48,6 +49,7 @@ class Agent:
             "skepticism": round(self.skepticism, 4),
             "received_count": len(self.received_info),
             "shared_count": len(self.shared_info),
+            "is_origin": self.is_origin,
         }
 
     def __repr__(self) -> str:
