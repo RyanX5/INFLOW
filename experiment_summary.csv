@@ -1,0 +1,3 @@
+item_type,mean_final_spread,std_final_spread,mean_time_to_50,std_time_to_50,mean_peak_rate,std_peak_rate,mean_polarization,std_polarization
+truth,0.8113,0.1594,11.36,2.31,0.1193,0.0244,0.1957,0.0135
+misinformation,0.9979,0.012,7.19,1.48,0.1786,0.031,0.1957,0.0135

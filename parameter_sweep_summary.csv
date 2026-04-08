@@ -1,0 +1,11 @@
+parameter,value,mean_final_spread,std_final_spread,mean_time_to_50,mean_peak_rate
+skepticism,0.1,0.9996,0.0028,6.68,0.182
+skepticism,0.3,0.9988,0.0047,6.9,0.1852
+skepticism,0.5,0.9938,0.0379,6.86,0.1864
+skepticism,0.7,0.9966,0.0154,7.14,0.1754
+skepticism,0.9,0.9996,0.0028,6.96,0.176
+trust_radius,0.1,0.9928,0.0179,7.58,0.165
+trust_radius,0.3,0.9954,0.0158,7.24,0.1718
+trust_radius,0.5,0.9942,0.0298,6.84,0.1882
+trust_radius,0.7,0.9998,0.0014,6.76,0.1838
+trust_radius,0.9,1.0,0.0,6.16,0.197
