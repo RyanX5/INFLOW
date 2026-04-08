@@ -14,7 +14,7 @@ class SimulationEngine:
     """
 
     def __init__(self, graph, agents: dict, seed: int = 42,
-                 share_probability: float = 0.3):
+                 share_probability: float = 1.0):
         """
         Initialize the simulation engine.
 
@@ -90,14 +90,14 @@ class SimulationEngine:
         """
         # Belief alignment: 1.0 = perfectly aligned, 0.0 = opposite
         alignment = 1.0 - abs(agent.belief - item.truth_value)
-        
-        # Weighted combination
+
+        # Weighted combination; complexity dampens sharing (complex info is harder to pass on)
         prob = (
             0.4 * item.emotional_intensity +
             0.3 * alignment +
             0.3 * agent.trust_radius
-        )
-    
+        ) * (1.0 - 0.5 * item.complexity) * self.share_probability
+
         return max(0.0, min(1.0, prob))
 
     def _log_step(self):

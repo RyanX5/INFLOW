@@ -23,8 +23,8 @@ def parse_args():
                         help="Random seed for reproducibility (default: 42)")
     parser.add_argument("--reset", action="store_true",
                     help="Clear output directory before running")
-    parser.add_argument("--share-prob", type=float, default=0.3,
-                        help="Uniform sharing probability per step (default: 0.3)")
+    parser.add_argument("--share-prob", type=float, default=1.0,
+                        help="Global sharing probability multiplier (default: 1.0)")
     parser.add_argument("--output-dir", type=str, default="output",
                         help="Directory for output CSV files (default: output/)")
     return parser.parse_args()
@@ -35,7 +35,7 @@ def main():
 
     print("=" * 55)
     print("  INFLOW - Information Propagation Simulation")
-    print("  Report 1 Demo")
+    print("  Information Propagation Simulation")
     print("=" * 55)
 
    
