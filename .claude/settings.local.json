@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python hub_injection.py)",
+      "Bash(npm run *)",
+      "Bash(pip install *)",
+      "Bash(timeout 5 python -c \"from api.main import app; print\\('API imports OK'\\)\")"
+    ]
+  }
+}

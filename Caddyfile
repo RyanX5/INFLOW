@@ -1,0 +1,11 @@
+seminar2.duckdns.org {
+    handle /api/* {
+        reverse_proxy localhost:8000
+    }
+
+    handle {
+        root * /var/www/inflow
+        file_server
+        try_files {path} /index.html
+    }
+}

@@ -1,0 +1,5 @@
+topology,condition,mean_final_spread,std_final_spread,mean_time_to_50,std_time_to_50,mean_peak_rate
+small_world,random,0.9936,0.0379,6.88,1.66,0.1856
+small_world,hub,1.0,0.0,5.94,0.97,0.1794
+scale_free,random,1.0,0.0,3.92,0.77,0.3622
+scale_free,hub,1.0,0.0,2.64,0.48,0.3698

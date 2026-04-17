@@ -133,6 +133,36 @@ class SimulationEngine:
                   f"Reached {item.spread_count}/{len(self.agents)} agents "
                   f"({frac:.1%})")
 
+    def run_with_history(self, num_steps: int) -> list:
+        """Run simulation and return full per-step, per-node state for animation."""
+        history = [self._capture_step_state()]
+        for _ in range(num_steps):
+            self.step += 1
+            self._step()
+            history.append(self._capture_step_state())
+        return history
+
+    def _capture_step_state(self) -> dict:
+        return {
+            "step": self.step,
+            "nodes": [
+                {
+                    "agent_id": a.agent_id,
+                    "belief": round(a.belief, 4),
+                    "received": list(a.received_info),
+                }
+                for a in self.agents.values()
+            ],
+            "stats": [
+                {
+                    "item_id": item.item_id,
+                    "spread_count": item.spread_count,
+                    "spread_fraction": round(item.spread_count / len(self.agents), 4),
+                }
+                for item in self.info_items
+            ],
+        }
+
     def save_outputs(self, output_dir: str = "output"):
         """
         Write simulation results to CSV files in the output directory.
