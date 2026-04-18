@@ -26,7 +26,11 @@ topology_comparison.py     100-trial: small_world vs. scale_free misinformation 
 parameter_analysis.py      50-trial sweep of skepticism and trust_radius vs. spread
 hub_injection.py           50-trial: hub vs. random origin injection on small_world + scale_free
 
-visualization/             React + D3 + TypeScript (Vite). Loads CSVs from /public, renders force graph.
+api/
+  main.py                  FastAPI app — POST /api/simulate runs simulation live, returns step history JSON
+  inflow-api.service       systemd service file for VPS deployment (runs uvicorn)
+
+visualization/             React + D3 + TypeScript (Vite). Calls /api/simulate, animates step-by-step.
 output/                    agent_states.csv, edges.csv, info_items.csv, spread_log.csv
 
 assets/screenshots/        PNG screenshots used in reports

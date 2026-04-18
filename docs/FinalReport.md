@@ -24,7 +24,7 @@ Simulation gives you that control. The goal of INFLOW is to build an agent-based
 
 ### Solution Summary
 
-INFLOW is a Python simulation backend paired with a React + D3 visualization frontend. The backend models a social network as a graph where each node is an agent with four psychological attributes. Information items are injected at origin nodes and propagate step by step through the network based on a sharing probability formula. The system supports three network topologies and a full suite of experimental scripts for analyzing propagation dynamics across hundreds of trials.
+INFLOW is a Python simulation engine paired with a FastAPI backend and a React + D3 visualization frontend. The simulation models a social network as a graph where each node is an agent with four psychological attributes. Users can configure and run simulations directly from the browser — choosing topology, agent count, steps, and emotional intensity — and watch the propagation animate step by step. A separate CLI and suite of experiment scripts support large-scale Monte Carlo analysis. The system is deployed on a VPS at seminar2.duckdns.org.
 
 ### Development History
 
@@ -42,44 +42,28 @@ INFLOW was built incrementally across three report milestones over the semester.
 
 ### Overall Architecture
 
-The system has three main layers: the simulation backend, the data output layer, and the visualization frontend.
+The system has two execution paths that share the same simulation core.
 
-```mermaid
-flowchart TD
-    subgraph Entry["Entry Points"]
-        A[main.py]
-        B[experiment_runner.py]
-        C[topology_comparison.py]
-        D[parameter_analysis.py]
-        E[hub_injection.py]
-    end
+**CLI path** — used for batch experiments and analysis:
 
-    subgraph Sim["Simulation Layer - simulation/"]
-        F["engine.py\npropagation loop + CSV logging"]
-        G["network.py\ngraph generation + agent init"]
-        H["agent.py\nbelief update model"]
-        I["information.py\ninfo item representation"]
-    end
+| Step | Component |
+|---|---|
+| 1. Entry | `main.py` or any experiment script |
+| 2. Simulation | `simulation/engine.py` calls `network.py`, `agent.py`, `information.py` |
+| 3. Output | Results written to `output/` as CSVs |
+| 4. Sync | CSVs copied to `visualization/public/` for static viewing |
 
-    subgraph Data["Data Layer"]
-        J["output/\nagent_states.csv · edges.csv\nspread_log.csv · info_items.csv"]
-        K["visualization/public/\nauto-synced after each run"]
-    end
+**Live app path** — powers the deployed web interface:
 
-    subgraph Viz["Visualization Frontend"]
-        L["React + TypeScript + D3\nforce graph · tooltips · belief color"]
-    end
+| Step | Component |
+|---|---|
+| 1. Browser | User configures and clicks Run in the React frontend |
+| 2. API | `POST /api/simulate` received by `api/main.py` (FastAPI) |
+| 3. Simulation | Same `simulation/` core runs live on the server |
+| 4. Response | Full step-by-step history returned as JSON |
+| 5. Render | Frontend animates the graph with playback controls and stats panel |
 
-    Entry --> F
-    F --> G
-    F --> H
-    F --> I
-    F --> J
-    J --> K
-    K --> L
-```
-
-A simulation run starts with `main.py` or one of the experiment scripts. The network module builds the graph and populates it with agents. Information items are injected at origin nodes, and the engine runs the propagation loop for a set number of steps. After the run, results are written to CSV files in `output/` and also copied to `visualization/public/` so the frontend can load them.
+Both paths call the same `simulation/` module, so the live app and the experiment scripts run identical logic.
 
 ![Visualization Overview](https://raw.githubusercontent.com/RyanX5/INFLOW/main/assets/screenshots/viz_overview.png)
 
@@ -89,10 +73,12 @@ A simulation run starts with `main.py` or one of the experiment scripts. The net
 
 | Component | Technology |
 |---|---|
-| Simulation backend | Python 3.10, NetworkX |
+| Simulation core | Python 3.10, NetworkX |
 | Data processing | NumPy, Matplotlib |
+| API backend | FastAPI, Uvicorn |
 | Visualization frontend | React, TypeScript, D3.js, Vite |
 | CSV parsing (frontend) | PapaParse |
+| Reverse proxy | Caddy |
 | Hosting | VPS via DuckDNS (seminar2.duckdns.org) |
 
 ### Key Components
@@ -105,7 +91,9 @@ A simulation run starts with `main.py` or one of the experiment scripts. The net
 
 **`simulation/engine.py`**: The core simulation loop. At each step, every agent that holds an info item tries to share it with each of their neighbors. The sharing decision is made probabilistically based on the agent's traits and the item's properties. The engine logs per-step spread metrics and exports everything to CSV at the end.
 
-**`visualization/src/App.tsx`**: A React component that loads the simulation CSVs via fetch, builds a D3 force-directed graph, colors nodes by belief value, and renders an interactive tooltip on hover.
+**`api/main.py`**: A FastAPI application exposing a single `POST /api/simulate` endpoint. Accepts a configuration payload (topology, agent count, steps, seed, emotional intensity values), runs the simulation, and returns the full step-by-step node state history as JSON. Deployed as a systemd service on the VPS.
+
+**`visualization/src/App.tsx`**: The React root component. Manages simulation config state, fires the API request on Run, and passes the step history down to the graph and stats panel. Includes a playback engine (play/pause/seek/speed) driven by a `setInterval` animation loop.
 
 ---
 
@@ -312,11 +300,21 @@ Finally, all experiments use misinformation items with `emotional_intensity=0.9`
 
 ### Live Demo
 
-The visualization is deployed on a VPS and accessible at:
+The full application is deployed on a VPS and accessible at:
 
 **http://seminar2.duckdns.org**
 
-The live demo loads a pre-run simulation (small-world network, 100 agents, 15 steps) and renders the interactive force-directed graph directly in the browser. No installation required.
+The live app is fully interactive. No installation required. From the browser you can:
+
+- Choose a network topology (random, small-world, or scale-free)
+- Set agent count (20 to 200), steps (5 to 30), and random seed
+- Adjust the emotional intensity of the truth and misinformation items independently
+- Click **Run Simulation** to execute it live on the server
+- Watch the network animate step by step, with play/pause, scrubbing, and speed controls
+- Inspect per-step spread stats in the stats panel on the right
+- Hover any node to see its agent traits and current belief
+
+The frontend talks to a FastAPI backend (`api/main.py`) running as a systemd service on the VPS, proxied through Caddy.
 
 ### Prerequisites (Local Setup)
 
@@ -353,11 +351,17 @@ After the run, check `output/` for the generated CSV files:
 - `info_items.csv`: truth value, emotional intensity, complexity, and final spread count
 - `edges.csv`: edge list of the generated network
 
-### Viewing the Network Visualization (Local)
+### Running the Visualization Locally
 
-The visualization reads the CSVs produced by `main.py`. Files are automatically copied to `visualization/public/` after a simulation run.
+The visualization requires both the FastAPI backend and the Vite dev server running simultaneously.
 
-Start the development server:
+Start the API backend from the project root:
+
+```bash
+uvicorn api.main:app --reload
+```
+
+In a separate terminal, start the frontend:
 
 ```bash
 cd visualization
@@ -365,14 +369,7 @@ npm install  # only needed the first time
 npm run dev
 ```
 
-Open `http://localhost:5173` in your browser. You should see a force-directed graph where:
-- Node color represents final belief (red = low, amber = mid, green = high)
-- Node size represents how many times the agent shared information
-- Dashed rings mark origin nodes (green ring = truth origin, red ring = misinformation origin)
-- Hovering a node shows its ID and all four trait values in a tooltip
-- Nodes can be dragged to rearrange the layout
-
-If the graph does not appear, make sure you ran `python main.py` first so the CSV files exist.
+Open `http://localhost:5173` in your browser. The frontend proxies API calls to `localhost:8000` automatically. From there, configure a simulation in the left panel and click Run to execute it live. The graph animates step by step and node details are visible on hover.
 
 ### Running Experiments
 
