@@ -4,6 +4,8 @@ An agent-based simulation of how information and misinformation spread through s
 
 Built for CSCI 412: Senior Seminar II.
 
+**Live Demo:** http://seminar2.duckdns.org
+
 ---
 
 ## Screenshots

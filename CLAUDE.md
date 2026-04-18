@@ -5,6 +5,7 @@
 INFLOW is an agent-based simulation of misinformation propagation through social networks. Built for CSCI 412: Senior Seminar II. The final deliverable is a comprehensive report PDF, a polished GitHub repo, and a working local app demo.
 
 GitHub: https://github.com/RyanX5/INFLOW  
+Live Demo: http://seminar2.duckdns.org  
 Author: Rohan Upadhyay
 
 ---
@@ -15,13 +16,15 @@ Author: Rohan Upadhyay
 simulation/
   agent.py         Agent(belief, bias, trust_radius, skepticism) — receive_information() updates belief
   engine.py        SimulationEngine — inject, run, _step, _sharing_probability, save_outputs → CSVs
+                   Also has run_with_history() for per-step node state capture (animation use)
   information.py   InfoItem(truth_value, emotional_intensity, complexity, origin_node)
   network.py       build_network() — 3 topologies: random (ER), small_world (WS), scale_free (BA)
 
-main.py                    CLI: --agents --steps --topology --seed --share-prob --output-dir
+main.py                    CLI: --agents --steps --topology --seed --share-prob --output-dir --reset
 experiment_runner.py       100-trial Monte Carlo: truth vs. misinformation on small_world
 topology_comparison.py     100-trial: small_world vs. scale_free misinformation spread
 parameter_analysis.py      50-trial sweep of skepticism and trust_radius vs. spread
+hub_injection.py           50-trial: hub vs. random origin injection on small_world + scale_free
 
 visualization/             React + D3 + TypeScript (Vite). Loads CSVs from /public, renders force graph.
 output/                    agent_states.csv, edges.csv, info_items.csv, spread_log.csv
@@ -55,6 +58,7 @@ belief = clamp(belief + delta, 0, 1)
 | Midterm | Mar 13 | Core simulation, visualization, basic CLI |
 | Report 2 | Mar 25 | experiment_runner.py (Monte Carlo), topology_comparison.py |
 | Report 3 | Apr 8 | parameter_analysis.py, refined sharing model (complexity wired in, share_prob fix), statistical metrics (t50, peak_rate, polarization) |
+| Final | Apr 17 | hub_injection.py, FinalReport.md (full narrative), README rewrite, VPS deployment |
 
 ---
 
@@ -67,10 +71,10 @@ Three deliverables required:
 
 ---
 
-## Known Gaps / Remaining Work (from Report 3 section 8)
+## Known Gaps / Remaining Work
 
 1. Add random (ER) topology to topology_comparison.py
-2. Hub injection vs. random injection analysis
+2. ~~Hub injection vs. random injection analysis~~ — DONE (hub_injection.py)
 3. Visualization: summary stats panel alongside network graph
 4. Combined skepticism × trust_radius interaction sweep
 
@@ -84,9 +88,11 @@ Three deliverables required:
 - Skepticism has only an indirect, weak effect (slows belief updates, not sharing decisions)
 - Scale-free networks more vulnerable than small-world (hub nodes amplify cascades)
 - Final spread is parameter-insensitive at high emotion — parameters modulate speed, not reach
+- Hub injection on scale-free reduces time to 50% by 33% vs. random injection (2.64 vs. 3.92 steps)
+- Network structure dominates origin strategy: random injection on scale-free beats hub injection on small-world
 
 ---
 
 ## README Status
 
-Currently severely outdated — says "Belief update logic not implemented yet." Needs complete rewrite for final submission.
+Up to date. Includes project description, live demo link, all CLI flags, all experiment scripts, visualization setup, project structure, and AI acknowledgment.

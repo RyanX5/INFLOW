@@ -2,7 +2,7 @@
 
 **Rohan Upadhyay** | CSCI 412: Senior Seminar II | April 2026
 
-GitHub: https://github.com/RyanX5/INFLOW
+GitHub: https://github.com/RyanX5/INFLOW | Live Demo: http://seminar2.duckdns.org
 
 ---
 
@@ -10,7 +10,7 @@ GitHub: https://github.com/RyanX5/INFLOW
 
 ### Problem Statement and Motivation
 
-Misinformation spreads faster than truth on social media. This has been documented empirically (Vosoughi et al., 2018), but the underlying mechanisms are not straightforward. Is it network structure? Is it the emotional charge of the content? Is it the psychology of the individual users sharing it? Probably all three, but figuring out which factors matter most - and how much - is hard to study in a real system where you cannot control variables.
+Misinformation spreads faster than truth on social media. This has been documented empirically (Vosoughi et al., 2018), but the underlying mechanisms are not all that straightforward. Is it the network structure? The emotional charge of the content? The psychology of the individual users sharing it? Probably all three, but figuring out which factors matter most, and how much, is hard to study in a real system where you cannot control variables.
 
 Simulation gives you that control. The goal of INFLOW is to build an agent-based model of a social network where you can adjust the emotional intensity of content, the psychological traits of users, and the structure of the network, and then directly observe how those changes affect how information spreads. The aim is not to perfectly replicate any real platform, but to explore the dynamics at a mechanistic level and draw out insights that are hard to see otherwise.
 
@@ -26,6 +26,16 @@ Simulation gives you that control. The goal of INFLOW is to build an agent-based
 
 INFLOW is a Python simulation backend paired with a React + D3 visualization frontend. The backend models a social network as a graph where each node is an agent with four psychological attributes. Information items are injected at origin nodes and propagate step by step through the network based on a sharing probability formula. The system supports three network topologies and a full suite of experimental scripts for analyzing propagation dynamics across hundreds of trials.
 
+### Development History
+
+INFLOW was built incrementally across three report milestones over the semester.
+
+**Phase 1 (Midterm, March 13):** The core simulation engine, agent model, and network generation were implemented. A working CLI (`main.py`) allowed configuring agent count, topology, steps, and seed. The React + D3 visualization frontend was built to display the network as a force-directed graph with belief-colored nodes and trait tooltips.
+
+**Phase 2 (Report 2, March 25):** Controlled Monte Carlo experiments were added. `experiment_runner.py` introduced the truth-vs-misinformation comparison across 100 trials. `topology_comparison.py` added the small-world vs. scale-free comparison. These scripts produced the first statistically grounded findings about spread differentials.
+
+**Phase 3 (Report 3, April 8):** `parameter_analysis.py` was added for the skepticism and trust radius sweeps. Two model fixes were applied: `complexity` was wired into the sharing probability formula (it had been stored but unused), and a bug in the global `share_prob` multiplier was corrected. Derived metrics (time-to-50% saturation, peak spread rate, and polarization index) were added to all experiment outputs. `hub_injection.py` was added to compare origin strategies across topologies.
+
 ---
 
 ## 2. System Design and Architecture
@@ -34,28 +44,46 @@ INFLOW is a Python simulation backend paired with a React + D3 visualization fro
 
 The system has three main layers: the simulation backend, the data output layer, and the visualization frontend.
 
-```
-main.py / experiment scripts
-        |
-        v
-+-------------------+
-|  simulation/      |
-|  network.py       |  <-- graph generation + agent init
-|  agent.py         |  <-- belief update model
-|  information.py   |  <-- info item representation
-|  engine.py        |  <-- propagation loop + logging
-+-------------------+
-        |
-        v
-   output/ (CSVs)
-        |
-        v
-+-------------------+
-|  visualization/   |  <-- React + D3 frontend
-+-------------------+
+```mermaid
+flowchart TD
+    subgraph Entry["Entry Points"]
+        A[main.py]
+        B[experiment_runner.py]
+        C[topology_comparison.py]
+        D[parameter_analysis.py]
+        E[hub_injection.py]
+    end
+
+    subgraph Sim["Simulation Layer - simulation/"]
+        F["engine.py\npropagation loop + CSV logging"]
+        G["network.py\ngraph generation + agent init"]
+        H["agent.py\nbelief update model"]
+        I["information.py\ninfo item representation"]
+    end
+
+    subgraph Data["Data Layer"]
+        J["output/\nagent_states.csv · edges.csv\nspread_log.csv · info_items.csv"]
+        K["visualization/public/\nauto-synced after each run"]
+    end
+
+    subgraph Viz["Visualization Frontend"]
+        L["React + TypeScript + D3\nforce graph · tooltips · belief color"]
+    end
+
+    Entry --> F
+    F --> G
+    F --> H
+    F --> I
+    F --> J
+    J --> K
+    K --> L
 ```
 
 A simulation run starts with `main.py` or one of the experiment scripts. The network module builds the graph and populates it with agents. Information items are injected at origin nodes, and the engine runs the propagation loop for a set number of steps. After the run, results are written to CSV files in `output/` and also copied to `visualization/public/` so the frontend can load them.
+
+![Visualization Overview](https://raw.githubusercontent.com/RyanX5/INFLOW/main/assets/screenshots/viz_overview.png)
+
+*Figure 1: The React + D3 visualization frontend. Nodes are colored by final belief (red = low, green = high), sized by share count, and origin nodes are marked with dashed rings.*
 
 ### Technologies and Tools
 
@@ -65,18 +93,19 @@ A simulation run starts with `main.py` or one of the experiment scripts. The net
 | Data processing | NumPy, Matplotlib |
 | Visualization frontend | React, TypeScript, D3.js, Vite |
 | CSV parsing (frontend) | PapaParse |
+| Hosting | VPS via DuckDNS (seminar2.duckdns.org) |
 
 ### Key Components
 
-**`simulation/network.py`** - Builds the network graph and creates agent instances. Supports three topologies: Erdos-Renyi (random), Watts-Strogatz (small-world), and Barabasi-Albert (scale-free). Returns both the graph and a dictionary of Agent objects keyed by node ID.
+**`simulation/network.py`**: Builds the network graph and creates agent instances. Supports three topologies: Erdos-Renyi (random), Watts-Strogatz (small-world), and Barabasi-Albert (scale-free). Returns both the graph and a dictionary of Agent objects keyed by node ID.
 
-**`simulation/agent.py`** - Defines the Agent class with four attributes: `belief` (0 to 1), `bias` (0 to 1), `trust_radius` (0 to 1), and `skepticism` (0 to 1). All are initialized randomly unless overridden. The `receive_information()` method updates the agent's belief when it receives an item.
+**`simulation/agent.py`**: Defines the Agent class with four attributes: `belief` (0 to 1), `bias` (0 to 1), `trust_radius` (0 to 1), and `skepticism` (0 to 1). All are initialized randomly unless overridden. The `receive_information()` method updates the agent's belief when it receives an item.
 
-**`simulation/information.py`** - Defines the InfoItem class with `truth_value`, `emotional_intensity`, `complexity`, and an `origin_node`. These properties feed directly into the sharing probability formula.
+**`simulation/information.py`**: Defines the InfoItem class with `truth_value`, `emotional_intensity`, `complexity`, and an `origin_node`. These properties feed directly into the sharing probability formula.
 
-**`simulation/engine.py`** - The core simulation loop. At each step, every agent that holds an info item tries to share it with each of their neighbors. The sharing decision is made probabilistically based on the agent's traits and the item's properties. The engine logs per-step spread metrics and exports everything to CSV at the end.
+**`simulation/engine.py`**: The core simulation loop. At each step, every agent that holds an info item tries to share it with each of their neighbors. The sharing decision is made probabilistically based on the agent's traits and the item's properties. The engine logs per-step spread metrics and exports everything to CSV at the end.
 
-**`visualization/src/App.tsx`** - A React component that loads the simulation CSVs via fetch, builds a D3 force-directed graph, colors nodes by belief value, and renders an interactive tooltip on hover.
+**`visualization/src/App.tsx`**: A React component that loads the simulation CSVs via fetch, builds a D3 force-directed graph, colors nodes by belief value, and renders an interactive tooltip on hover.
 
 ---
 
@@ -86,10 +115,14 @@ A simulation run starts with `main.py` or one of the experiment scripts. The net
 
 Each agent has four scalar attributes, all in the range $[0, 1]$:
 
-- **belief** ($b$) - how much the agent currently believes information it receives is true
-- **bias** ($\beta$) - how resistant the agent is to updating their belief (high bias = rigid)
-- **skepticism** ($s$) - dampens the magnitude of belief updates
-- **trust_radius** ($\tau$) - how willing the agent is to share information with neighbors
+- **belief** ($b$): how much the agent currently believes information it receives is true
+- **bias** ($\beta$): how resistant the agent is to updating their belief (high bias = rigid)
+- **skepticism** ($s$): dampens the magnitude of belief updates
+- **trust_radius** ($\tau$): how willing the agent is to share information with neighbors
+
+![Agent Tooltip](https://raw.githubusercontent.com/RyanX5/INFLOW/main/assets/screenshots/viz_tooltip.png)
+
+*Figure 2: Hovering a node reveals all four agent attributes in a tooltip: belief, bias, skepticism, trust radius, and share count.*
 
 When an agent receives an information item, their belief shifts toward the item's truth value. The update rule is:
 
@@ -115,17 +148,17 @@ Where:
 
 The weights were chosen to reflect the observation that emotional content is the primary driver of sharing behavior online (Vosoughi et al., 2018), followed equally by belief alignment and individual trust tendency. The complexity dampener $(1 - 0.5C)$ reflects that complex or technical content travels more slowly regardless of how emotionally charged it is. At $C = 0$ there is no dampening; at $C = 1$, sharing probability is halved.
 
-One design decision worth noting: the sharing probability is computed from the *sender's* perspective, not the receiver's. The receiver's skepticism and bias only matter at the belief update step after they actually receive the item, not at the sharing decision. This models the idea that whether someone shares content is primarily driven by the sharer's psychology and the content's properties, while how much it changes the recipient's mind depends on the recipient.
+One design decision worth noting: the sharing probability is computed from the *sender's* perspective, not the receiver's. The receiver's skepticism and bias only matter at the belief update step after they actually receive the item, not at the sharing decision. This captures the idea that whether someone shares content is primarily driven by the sharer's psychology and the content's properties, while how much it changes the recipient's mind depends on the recipient.
 
 ### Network Topologies
 
 Three network types are supported, each approximating a different class of real social network:
 
-**Erdos-Renyi (random)** - Each possible edge exists with probability $p$. Produces roughly uniform degree distribution with no clustering structure. Used as a baseline.
+**Erdos-Renyi (random):** Each possible edge exists with probability $p$. Produces a roughly uniform degree distribution with no clustering structure. Used as a baseline.
 
-**Watts-Strogatz (small-world)** - Starts from a ring lattice with $k$ neighbors per node and rewires each edge with probability $p$. Produces high clustering with short average path lengths, similar to how real social networks have friend groups with a few long-range connections.
+**Watts-Strogatz (small-world):** Starts from a ring lattice with $k$ neighbors per node and rewires each edge with probability $p$. Produces high clustering with short average path lengths, similar to how real social networks have tight friend groups with a few long-range connections between them.
 
-**Barabasi-Albert (scale-free)** - Grows the network by preferential attachment: new nodes preferentially connect to existing high-degree nodes. Produces a power-law degree distribution with a small number of very high-degree hub nodes. Approximates the structure of platforms like Twitter where a few accounts have enormous reach.
+**Barabasi-Albert (scale-free):** Grows the network by preferential attachment, where new nodes preferentially connect to existing high-degree nodes. Produces a power-law degree distribution with a small number of very high-degree hub nodes. This approximates platforms like Twitter, where a few accounts have enormous reach.
 
 ### Experiment Design
 
@@ -133,13 +166,13 @@ All experiments use Monte Carlo trials (50 to 100 per condition) to account for 
 
 The core experiments are:
 
-1. **Truth vs. misinformation** (`experiment_runner.py`) - two items compete simultaneously on the same small-world network. The truth item has high truth value and low emotional intensity; the misinformation item has low truth value and high emotional intensity.
+1. **Truth vs. misinformation** (`experiment_runner.py`): two items compete simultaneously on the same small-world network. The truth item has high truth value and low emotional intensity; the misinformation item has low truth value and high emotional intensity.
 
-2. **Topology comparison** (`topology_comparison.py`) - misinformation only, comparing small-world vs. scale-free networks.
+2. **Topology comparison** (`topology_comparison.py`): misinformation only, comparing small-world vs. scale-free networks.
 
-3. **Parameter sensitivity** (`parameter_analysis.py`) - sweeps agent skepticism and trust radius from 0.1 to 0.9, holding all other parameters at randomly initialized defaults.
+3. **Parameter sensitivity** (`parameter_analysis.py`): sweeps agent skepticism and trust radius from 0.1 to 0.9, holding all other parameters at randomly initialized defaults.
 
-4. **Hub injection** (`hub_injection.py`) - compares starting misinformation from the highest-degree node (hub) vs. a random node, on both topologies.
+4. **Hub injection** (`hub_injection.py`): compares starting misinformation from the highest-degree node (hub) vs. a random node, on both topologies.
 
 ---
 
@@ -151,7 +184,7 @@ The baseline experiment runs 100 Monte Carlo trials on a small-world network wit
 
 ![Propagation Analysis](https://raw.githubusercontent.com/RyanX5/INFLOW/main/assets/screenshots/propagation_analysis.png)
 
-*Figure 1: Mean network reach over 15 steps across 100 trials. Red = misinformation (high emotion). Blue = truth (low emotion). Shaded bands show +/- 1 standard deviation.*
+*Figure 3: Mean network reach over 15 steps across 100 trials. Red = misinformation (high emotion). Blue = truth (low emotion). Shaded bands show +/- 1 standard deviation.*
 
 | Metric | Truth | Misinformation |
 |---|---|---|
@@ -160,9 +193,13 @@ The baseline experiment runs 100 Monte Carlo trials on a small-world network wit
 | Peak spread rate | 0.1193 +/- 0.0244 | 0.1786 +/- 0.0310 |
 | Polarization index | 0.196 | 0.196 |
 
-Misinformation reaches near-total network coverage (99.8%) while truth tops out at 81.1% on average. The divergence is largest in the middle steps (roughly 4 to 10), where the high emotional intensity of the misinformation item produces consistently higher sharing probabilities at each agent interaction. The 50% saturation gap is 4.2 steps out of a 15-step simulation, which is substantial.
+![Experiment Summary Table](https://raw.githubusercontent.com/RyanX5/INFLOW/main/assets/screenshots/experiment_summary_table.png)
 
-The high variance in truth spread (0.159 standard deviation vs. 0.012 for misinformation) reflects that low-emotion content is more sensitive to where in the network it starts. If the truth item originates in a well-connected region it can spread broadly; if it starts at the periphery it may stall. The misinformation item, carrying a 0.4 weight from its high emotional intensity, is much less sensitive to origin location.
+*Figure 4: Terminal output summary from experiment_runner.py across 100 trials.*
+
+Misinformation reaches near-total network coverage (99.8%) while truth tops out at 81.1% on average. The divergence is largest in the middle steps (roughly 4 to 10), where the high emotional intensity of the misinformation item produces consistently higher sharing probabilities at each agent interaction. The 50% saturation gap is 4.2 steps out of a 15-step simulation, which is a meaningful difference.
+
+The high variance in truth spread (standard deviation 0.159 vs. 0.012 for misinformation) reflects that low-emotion content is more sensitive to where in the network it starts. If the truth item originates in a well-connected region it can spread broadly; if it starts at the periphery it may stall. The misinformation item, carrying a 0.4 weight from its high emotional intensity, is much less sensitive to origin location.
 
 Both items produce an identical polarization index of 0.196. This is because polarization is measured as the standard deviation of all agent beliefs after both items have propagated through the network. The competing influences of the two items produce a consistent spread of final beliefs regardless of which item dominates in a given trial.
 
@@ -172,9 +209,9 @@ The next experiment isolates network structure by running only the misinformatio
 
 ![Topology Comparison](https://raw.githubusercontent.com/RyanX5/INFLOW/main/assets/screenshots/topology_comparison.png)
 
-*Figure 2: Misinformation spread across 100 trials per topology. Red = small-world. Purple = scale-free.*
+*Figure 5: Misinformation spread across 100 trials per topology. Red = small-world. Purple = scale-free.*
 
-Scale-free networks are noticeably more vulnerable. The mean time to 50% saturation is substantially lower in scale-free networks, and the spread curve rises more steeply in early steps. This is explained by the hub nodes in scale-free networks: a small number of agents with very high degree serve as amplifiers, passing the misinformation to many neighbors in a single step. Small-world networks have more uniform degree, so the spread is smoother and slightly slower.
+Scale-free networks are noticeably more vulnerable. The mean time to 50% saturation is substantially lower in scale-free networks, and the spread curve rises more steeply in early steps. This comes down to the hub nodes in scale-free networks: a small number of agents with very high degree serve as amplifiers, passing the misinformation to many neighbors in a single step. Small-world networks have more uniform degree, so the spread is smoother and slightly slower.
 
 Both topologies converge to near-full saturation by step 15, which reflects the high emotional intensity of the test item. For lower-emotion content, topology differences would likely persist into the final step counts.
 
@@ -186,7 +223,7 @@ The parameter sweep runs 50 trials per value across five values of each paramete
 
 ![Skepticism Sweep](https://raw.githubusercontent.com/RyanX5/INFLOW/main/assets/screenshots/skepticism_sweep.png)
 
-*Figure 3: Misinformation spread vs. agent skepticism. 50 trials per value.*
+*Figure 6: Misinformation spread vs. agent skepticism. 50 trials per value.*
 
 | Skepticism | Mean Final Spread | Time to 50% |
 |---|---|---|
@@ -202,7 +239,7 @@ The effect of skepticism is weak and non-monotonic. Time to 50% increases by abo
 
 ![Trust Radius Sweep](https://raw.githubusercontent.com/RyanX5/INFLOW/main/assets/screenshots/trust_radius_sweep.png)
 
-*Figure 4: Misinformation spread vs. agent trust radius. 50 trials per value.*
+*Figure 7: Misinformation spread vs. agent trust radius. 50 trials per value.*
 
 | Trust Radius | Mean Final Spread | Time to 50% |
 |---|---|---|
@@ -212,9 +249,13 @@ The effect of skepticism is weak and non-monotonic. Time to 50% increases by abo
 | 0.7 | 0.9998 | 6.76 steps |
 | 0.9 | 1.0000 | 6.16 steps |
 
-Trust radius shows a clean monotonic relationship: as trust increases from 0.1 to 0.9, time to 50% saturation decreases from 7.58 to 6.16 steps and the variance drops. This is expected since trust radius contributes 0.3 weight directly to the sharing formula. Higher trust means higher per-step sharing probability at every agent interaction, which compounds across the network over time.
+Trust radius shows a clean monotonic relationship: as trust increases from 0.1 to 0.9, time to 50% saturation decreases from 7.58 to 6.16 steps and the variance drops. This makes sense since trust radius contributes 0.3 weight directly to the sharing formula. Higher trust means higher per-step sharing probability at every agent interaction, which compounds across the network over time.
 
-The contrast between the two sweeps illustrates something important about model design: where a parameter appears in the formula determines whether its effect is direct or indirect. Trust radius plugs directly into $P_{\text{share}}$, so tuning it has immediate and consistent effects. Skepticism goes through belief updates first, so its influence is attenuated and context-dependent.
+![Parameter Summary Table](https://raw.githubusercontent.com/RyanX5/INFLOW/main/assets/screenshots/parameter_summary_table.png)
+
+*Figure 8: Terminal summary output from parameter_analysis.py showing both sweeps.*
+
+The contrast between the two sweeps gets at something important about model design: where a parameter appears in the formula determines whether its effect is direct or indirect. Trust radius plugs directly into $P_{\text{share}}$, so tuning it has immediate and consistent effects. Skepticism goes through belief updates first, so its influence is attenuated and context-dependent.
 
 ### Hub vs. Random Injection
 
@@ -222,7 +263,7 @@ The final experiment compares starting misinformation at the highest-degree node
 
 ![Hub Injection Results](https://raw.githubusercontent.com/RyanX5/INFLOW/main/assets/screenshots/hub_cascade.png)
 
-*Figure 5: Hub vs. random origin injection across topologies. 50 trials per condition.*
+*Figure 9: Hub vs. random origin injection across topologies. 50 trials per condition.*
 
 | Topology | Condition | Mean Final Spread | Time to 50% | Peak Rate |
 |---|---|---|---|---|
@@ -231,11 +272,11 @@ The final experiment compares starting misinformation at the highest-degree node
 | scale_free | random | 1.0000 +/- 0.0000 | 3.92 steps | 0.3622 |
 | scale_free | hub | 1.0000 +/- 0.0000 | 2.64 steps | 0.3698 |
 
-A few things stand out here. First, starting from the hub node accelerates spread in both topologies, but the magnitude of the effect differs. In small-world, hub injection reduces time to 50% by about 0.94 steps (from 6.88 to 5.94). In scale-free, the reduction is 1.28 steps (from 3.92 to 2.64) - a 33% speedup on an already fast baseline. The hub effect is stronger where hubs matter more.
+A few things stand out here. Starting from the hub node accelerates spread in both topologies, but the magnitude of the effect is different. In small-world, hub injection reduces time to 50% by about 0.94 steps (from 6.88 to 5.94). In scale-free, the reduction is 1.28 steps (from 3.92 to 2.64), a 33% speedup on an already fast baseline. The hub effect is stronger where hubs actually matter.
 
-Second, scale-free networks spread misinformation dramatically faster than small-world regardless of origin. Even random injection on scale-free (3.92 steps to 50%) beats hub injection on small-world (5.94 steps to 50%). The network structure matters more than the origin strategy.
+Scale-free networks spread misinformation dramatically faster than small-world regardless of origin. Even random injection on scale-free (3.92 steps to 50%) beats hub injection on small-world (5.94 steps to 50%). The network structure matters more than the origin strategy.
 
-Third, the peak spread rate in scale-free networks (around 0.36) is roughly double that of small-world (around 0.18). This is the signature of a hub cascade: once a high-degree node shares the item, it reaches many neighbors simultaneously, causing a sharp single-step jump in coverage.
+The peak spread rate in scale-free networks (around 0.36) is roughly double that of small-world (around 0.18). This is the signature of a hub cascade: once a high-degree node shares the item, it reaches many neighbors simultaneously, causing a sharp single-step jump in coverage.
 
 The zero standard deviation for final spread in scale-free (both conditions) and small-world hub injection reflects that these conditions consistently saturate the full network within 15 steps. The only condition with nonzero final spread variance is small-world random injection, confirming that origin location matters in more uniform networks.
 
@@ -247,7 +288,7 @@ The belief update model is simple. Real users do not update their beliefs by a f
 
 The simulation also does not model forgetting, unfollowing, or changes in network structure over time. Real networks are dynamic: people lose interest in content, platforms suppress or amplify certain posts algorithmically, and connections form and break. None of that is in the model.
 
-The parameter sweep experiments only vary one parameter at a time. The skepticism and trust radius results described above assume all other parameters are random; an interaction where both skepticism and trust radius are high simultaneously is not tested.
+The parameter sweep experiments only vary one parameter at a time. The skepticism and trust radius results described above assume all other parameters are random, so an interaction where both skepticism and trust radius are high simultaneously is not tested.
 
 Finally, all experiments use misinformation items with `emotional_intensity=0.9`. This is close to the saturation point of the emotional term in the sharing formula, which is part of why final spread is near 100% in most conditions. The model's behavior under moderate emotional intensity (say, 0.5) is less fully characterized.
 
@@ -255,7 +296,7 @@ Finally, all experiments use misinformation items with `emotional_intensity=0.9`
 
 ## 5. Challenges and Solutions
 
-**Debugging the indirect path of skepticism.** When the parameter sweep first ran, the skepticism curves were nearly identical across all values. This looked like a bug. Tracing through the model revealed that skepticism only affects belief updates, not sharing decisions directly. The sharing formula was working as intended; the indirect mechanism just produces a weak signal. The solution was to reread the model equations carefully and reframe the result as a finding rather than an error.
+**Debugging the indirect path of skepticism.** When the parameter sweep first ran, the skepticism curves were nearly identical across all values. It looked like a bug. Tracing through the model revealed that skepticism only affects belief updates, not sharing decisions directly. The sharing formula was working as intended; the indirect mechanism just produces a weak signal. The fix was to reread the model equations carefully and reframe the result as a finding rather than an error.
 
 **Wiring complexity into the sharing formula.** The `complexity` field on `InfoItem` was in the model from the start but was never actually used in the sharing probability calculation. It was just stored as an attribute. Fixing this required going back to the original design intent, deciding on a reasonable functional form (a linear dampener), and choosing a coefficient (0.5) that would produce a noticeable but not dominant effect.
 
@@ -269,7 +310,15 @@ Finally, all experiments use misinformation items with `emotional_intensity=0.9`
 
 ## 6. User Guide
 
-### Prerequisites
+### Live Demo
+
+The visualization is deployed on a VPS and accessible at:
+
+**http://seminar2.duckdns.org**
+
+The live demo loads a pre-run simulation (small-world network, 100 agents, 15 steps) and renders the interactive force-directed graph directly in the browser. No installation required.
+
+### Prerequisites (Local Setup)
 
 - Python 3.10 or later
 - Node.js 18 or later (for the visualization only)
@@ -294,13 +343,17 @@ The default configuration uses 50 agents, a small-world network, and 15 time ste
 python main.py --agents 100 --steps 20 --topology scale_free --seed 123
 ```
 
-After the run, check `output/` for the generated CSV files:
-- `spread_log.csv` - step-by-step spread fraction for each info item
-- `agent_states.csv` - final belief, bias, skepticism, trust radius, and share count per agent
-- `info_items.csv` - truth value, emotional intensity, complexity, and final spread count
-- `edges.csv` - edge list of the generated network
+![Terminal Output](https://raw.githubusercontent.com/RyanX5/INFLOW/main/assets/screenshots/terminal.png)
 
-### Viewing the Network Visualization
+*The simulation prints per-step spread progress to the terminal as it runs.*
+
+After the run, check `output/` for the generated CSV files:
+- `spread_log.csv`: step-by-step spread fraction for each info item
+- `agent_states.csv`: final belief, bias, skepticism, trust radius, and share count per agent
+- `info_items.csv`: truth value, emotional intensity, complexity, and final spread count
+- `edges.csv`: edge list of the generated network
+
+### Viewing the Network Visualization (Local)
 
 The visualization reads the CSVs produced by `main.py`. Files are automatically copied to `visualization/public/` after a simulation run.
 
@@ -345,9 +398,9 @@ Each script prints a summary table to the terminal and saves a PNG plot and CSV 
 
 ## 7. Conclusion
 
-INFLOW started as a basic simulation framework and ended up as a full experimental platform for studying misinformation dynamics. Over the course of the project, the model was extended from a minimal working simulation to a system that can run hundreds of controlled Monte Carlo trials and produce statistically grounded comparisons across network topologies, agent parameters, and injection strategies.
+INFLOW started as a basic simulation framework and grew into a full experimental platform for studying misinformation dynamics. The project developed in three phases: a working simulation and visualization, a Monte Carlo experiment suite, and finally a parameter analysis layer with a corrected sharing model and hub injection experiments. Each phase added not just new features but new empirical questions that the previous version could not answer.
 
-The main findings are worth summarizing. Emotional intensity is the dominant factor in spread. A misinformation item with high emotional charge consistently outpaces factual content regardless of the network structure or agent configuration tested. Trust radius has a direct, monotonic effect on spread speed because it enters the sharing formula explicitly. Skepticism has a much weaker and noisier effect because its influence travels through the belief update pathway rather than the sharing decision. Network structure matters: scale-free networks are substantially more vulnerable than small-world networks, and this is amplified when misinformation starts at a hub node. Hub injection reduces time to 50% saturation by about a third in scale-free networks compared to random injection.
+The main findings are worth summarizing. Emotional intensity is the dominant factor in spread. A misinformation item with high emotional charge consistently outpaces factual content regardless of the network structure or agent configuration tested. Trust radius has a direct, monotonic effect on spread speed because it enters the sharing formula explicitly. Skepticism has a much weaker and noisier effect because its influence travels through the belief update pathway rather than the sharing decision. Network structure matters: scale-free networks are substantially more vulnerable than small-world networks, and this gap is amplified when misinformation starts at a hub node. Hub injection reduces time to 50% saturation by roughly a third in scale-free networks compared to random injection.
 
 These findings are consistent with the empirical literature on online misinformation. Vosoughi et al. (2018) found that false news spreads faster and farther than true news on Twitter, driven largely by novelty and emotional resonance. The model here reproduces that dynamic mechanically: the emotional intensity term in the sharing formula directly encodes a structural sharing advantage for high-emotion content.
 
